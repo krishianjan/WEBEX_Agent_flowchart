@@ -1,0 +1,1764 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Webex AI Meeting Prep & Q&A Agent</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@300;400;500;600&display=swap');
+
+:root {
+  /* ── Base ── */
+  --bg:       #080c14;
+  --bg2:      #0d1220;
+  --surface:  #111827;
+  --surface2: #1a2235;
+  --border:   #1e2d45;
+  --border2:  #2a4060;
+
+  /* ── Phase palette (same as VIBE doc) ── */
+  --ph0:   #00e5ff;   /* Pre-Meeting   – cyan     */
+  --ph1:   #00ff9d;   /* Live Meeting  – green    */
+  --ph2:   #a855f7;   /* Post-Meeting  – purple   */
+  --agent: #ff6b35;   /* Agentic AI    – orange   */
+  --splunk:#fbbf24;   /* Splunk rail   – amber    */
+  --dec:   #ff3b6b;   /* Decision gate – red      */
+  --data:  #38bdf8;   /* Data sources  – sky blue */
+
+  --text:     #e2e8f0;
+  --text-mid: #94a3b8;
+  --text-dim: #475569;
+}
+
+*{box-sizing:border-box;margin:0;padding:0;}
+
+body{
+  font-family:'Syne',sans-serif;
+  background:var(--bg);
+  color:var(--text);
+  padding:48px 20px 80px;
+  overflow-x:hidden;
+}
+
+/* ── ambient glow ── */
+body::before{
+  content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
+  background:
+    radial-gradient(ellipse 55% 35% at 15% 15%, rgba(0,229,255,.04) 0%,transparent 65%),
+    radial-gradient(ellipse 45% 30% at 85% 75%, rgba(168,85,247,.05) 0%,transparent 65%),
+    radial-gradient(ellipse 35% 25% at 50% 45%, rgba(0,255,157,.03) 0%,transparent 60%);
+}
+
+/* ══════════════════════════════
+   HEADER
+══════════════════════════════ */
+.header{position:relative;z-index:1;text-align:center;margin-bottom:52px;}
+
+.cisco-badge{
+  display:inline-flex;align-items:center;gap:8px;
+  background:var(--surface);border:1px solid var(--border2);
+  padding:6px 20px;border-radius:30px;
+  font-family:'JetBrains Mono',monospace;font-size:11px;
+  color:var(--ph0);letter-spacing:1px;margin-bottom:20px;
+}
+
+.main-title{
+  font-size:clamp(28px,5vw,46px);font-weight:800;letter-spacing:-1.5px;
+  line-height:1.1;margin-bottom:10px;
+  background:linear-gradient(130deg,var(--ph0) 0%,var(--ph1) 55%,var(--ph2) 100%);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+}
+
+.subtitle{
+  font-family:'JetBrains Mono',monospace;font-size:12px;
+  color:var(--text-mid);letter-spacing:2px;margin-bottom:10px;
+}
+
+.desc{font-size:14px;color:var(--text-dim);max-width:580px;margin:0 auto;line-height:1.7;}
+.desc b{color:var(--ph0);}
+
+/* ══════════════════════════════
+   LEGEND
+══════════════════════════════ */
+.legend{
+  position:relative;z-index:1;
+  display:flex;flex-wrap:wrap;gap:10px;
+  justify-content:center;margin-bottom:44px;
+}
+.leg{
+  display:flex;align-items:center;gap:7px;
+  background:var(--surface);border:1px solid var(--border);
+  padding:5px 14px;border-radius:20px;
+  font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-mid);
+}
+.leg-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0;}
+
+/* ══════════════════════════════
+   LAYOUT: TWO-COLUMN (main + splunk rail)
+══════════════════════════════ */
+.canvas{
+  position:relative;z-index:1;
+  max-width:1060px;margin:0 auto;
+  display:grid;
+  grid-template-columns:1fr 220px;
+  grid-template-rows:auto;
+  gap:0 20px;
+  align-items:start;
+}
+
+/* splunk rail lives in column 2 */
+.splunk-rail{
+  grid-column:2;
+  grid-row:1 / 99;
+  position:sticky;top:24px;
+  display:flex;flex-direction:column;
+  gap:12px;
+}
+
+.splunk-header{
+  background:rgba(251,191,36,.1);
+  border:1px solid rgba(251,191,36,.35);
+  border-radius:12px;
+  padding:12px 14px;
+  font-family:'JetBrains Mono',monospace;
+  font-size:10px;letter-spacing:1.5px;
+  color:var(--splunk);font-weight:600;
+  text-transform:uppercase;
+  text-align:center;
+}
+
+.splunk-card{
+  background:var(--bg2);
+  border:1px solid rgba(251,191,36,.25);
+  border-left:3px solid var(--splunk);
+  border-radius:10px;
+  padding:11px 13px;
+}
+
+.splunk-card-title{
+  font-family:'JetBrains Mono',monospace;
+  font-size:10px;font-weight:600;
+  color:var(--splunk);margin-bottom:6px;
+  display:flex;align-items:center;gap:6px;
+}
+
+.splunk-card-body{
+  font-family:'JetBrains Mono',monospace;
+  font-size:10px;color:var(--text-dim);line-height:1.8;
+}
+
+.splunk-divider{
+  height:1px;background:rgba(251,191,36,.15);margin:4px 0;
+}
+
+/* ══════════════════════════════
+   MAIN FLOW (column 1)
+══════════════════════════════ */
+.flow{
+  grid-column:1;
+  display:flex;flex-direction:column;
+  align-items:center;gap:0;
+}
+
+/* ── Terminals ── */
+.terminal{
+  background:var(--surface);
+  border:2px solid var(--ph0);
+  padding:13px 38px;border-radius:50px;
+  font-family:'JetBrains Mono',monospace;
+  font-weight:700;font-size:13px;letter-spacing:.8px;
+  color:var(--ph0);
+  box-shadow:0 0 22px rgba(0,229,255,.18),inset 0 0 18px rgba(0,229,255,.04);
+}
+.terminal-end{
+  border-color:var(--ph1);color:var(--ph1);
+  box-shadow:0 0 22px rgba(0,255,157,.18),inset 0 0 18px rgba(0,255,157,.04);
+}
+
+/* ── Arrows ── */
+.arr{display:flex;flex-direction:column;align-items:center;margin:2px 0;}
+.arr-line{width:2px;height:26px;background:linear-gradient(to bottom,var(--border2),rgba(0,229,255,.4));opacity:.6;}
+.arr-head{width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-top:8px solid rgba(0,229,255,.5);}
+.arr-label{
+  font-family:'JetBrains Mono',monospace;font-size:10px;
+  color:var(--text-dim);background:var(--bg2);
+  padding:2px 10px;border-radius:10px;border:1px solid var(--border);margin:2px 0;
+}
+
+/* ── Phase block ── */
+.phase{
+  width:100%;border-radius:14px;overflow:hidden;
+  border:1px solid var(--border);margin-top:28px;
+}
+.phase-hdr{
+  display:flex;align-items:center;gap:12px;
+  padding:13px 22px;
+  font-family:'JetBrains Mono',monospace;
+  font-weight:700;font-size:11px;letter-spacing:1.5px;text-transform:uppercase;
+}
+.phase-body{
+  background:var(--surface);padding:24px 20px;
+  display:flex;flex-direction:column;align-items:center;gap:8px;
+}
+
+/* phase color overrides */
+.ph0 .phase-hdr{background:rgba(0,229,255,.1);color:var(--ph0);border-bottom:1px solid rgba(0,229,255,.2);}
+.ph1 .phase-hdr{background:rgba(0,255,157,.1);color:var(--ph1);border-bottom:1px solid rgba(0,255,157,.2);}
+.ph2 .phase-hdr{background:rgba(168,85,247,.1);color:var(--ph2);border-bottom:1px solid rgba(168,85,247,.2);}
+
+/* ── Data sources bar ── */
+.data-bar{
+  display:flex;flex-wrap:wrap;gap:8px;
+  width:100%;max-width:700px;justify-content:center;
+  margin-bottom:4px;
+}
+.data-chip{
+  font-family:'JetBrains Mono',monospace;font-size:10px;
+  padding:4px 12px;border-radius:16px;
+  border:1px solid rgba(56,189,248,.4);
+  color:var(--data);background:rgba(56,189,248,.06);
+  display:flex;align-items:center;gap:5px;
+}
+
+/* ── Nodes ── */
+.node{
+  border-radius:10px;padding:13px 18px;
+  border:1px solid var(--border);background:var(--bg2);
+  width:100%;max-width:680px;
+}
+.node-title{
+  font-weight:700;font-size:13px;margin-bottom:5px;
+  display:flex;align-items:center;gap:8px;
+}
+.node-body{
+  font-family:'JetBrains Mono',monospace;
+  font-size:11px;color:var(--text-mid);line-height:1.85;
+}
+
+/* accent variants */
+.n0{border-color:rgba(0,229,255,.3);}  .n0 .node-title{color:var(--ph0);}
+.n1{border-color:rgba(0,255,157,.3);}  .n1 .node-title{color:var(--ph1);}
+.n2{border-color:rgba(168,85,247,.3);} .n2 .node-title{color:var(--ph2);}
+.nAI{border-color:rgba(255,107,53,.4);background:rgba(255,107,53,.04);} .nAI .node-title{color:var(--agent);}
+.nDec{border-color:rgba(255,59,107,.45);background:rgba(255,59,107,.04);} .nDec .node-title{color:var(--dec);}
+
+/* ── Two-column node row ── */
+.row2{display:flex;gap:14px;width:100%;max-width:700px;}
+.row2 .node{flex:1;max-width:none;}
+
+/* ── Three-column ── */
+.row3{display:flex;gap:12px;width:100%;max-width:720px;}
+.row3 .node{flex:1;max-width:none;font-size:12px;}
+
+/* ── Decision gate ── */
+.gate{
+  background:rgba(255,59,107,.07);border:1.5px solid rgba(255,59,107,.5);
+  border-radius:10px;padding:13px 26px;text-align:center;
+  font-family:'JetBrains Mono',monospace;font-weight:700;font-size:12px;
+  color:var(--dec);max-width:320px;
+}
+
+/* ── Branch ── */
+.branch-row{display:flex;gap:18px;width:100%;max-width:660px;justify-content:center;align-items:flex-start;margin:4px 0;}
+.branch{display:flex;flex-direction:column;align-items:center;gap:5px;flex:1;max-width:220px;}
+.branch-tag{
+  font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;
+  padding:3px 12px;border-radius:12px;border:1.5px solid;
+}
+.tag-yes{color:var(--ph1);border-color:var(--ph1);background:rgba(0,255,157,.08);}
+.tag-no {color:var(--dec);border-color:var(--dec);background:rgba(255,59,107,.08);}
+
+/* ── Agentic sidecar callout ── */
+.agentic-bar{
+  width:100%;max-width:700px;
+  background:rgba(255,107,53,.05);
+  border:1px dashed rgba(255,107,53,.4);
+  border-radius:12px;padding:14px 18px;
+  position:relative;
+}
+.agentic-bar::before{
+  content:'✦ AGENTIC ORCHESTRATOR';
+  position:absolute;top:-10px;left:18px;
+  font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;
+  padding:2px 10px;border-radius:8px;
+  background:var(--agent);color:#fff;letter-spacing:1px;
+}
+.agentic-title{font-weight:700;font-size:12px;color:var(--agent);margin-bottom:6px;display:flex;align-items:center;gap:6px;}
+.agentic-body{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-mid);line-height:1.8;}
+
+/* ── Pills ── */
+.pills{display:flex;flex-wrap:wrap;gap:7px;margin-top:8px;}
+.pill{
+  font-family:'JetBrains Mono',monospace;font-size:10px;
+  padding:3px 12px;border-radius:16px;border:1px solid;font-weight:500;
+}
+.p0{color:var(--ph0);border-color:rgba(0,229,255,.4);background:rgba(0,229,255,.06);}
+.p1{color:var(--ph1);border-color:rgba(0,255,157,.4);background:rgba(0,255,157,.06);}
+.p2{color:var(--ph2);border-color:rgba(168,85,247,.4);background:rgba(168,85,247,.06);}
+.pA{color:var(--agent);border-color:rgba(255,107,53,.4);background:rgba(255,107,53,.06);}
+.pS{color:var(--splunk);border-color:rgba(251,191,36,.4);background:rgba(251,191,36,.06);}
+
+/* step num */
+.sn{
+  display:inline-flex;align-items:center;justify-content:center;
+  width:19px;height:19px;background:var(--border2);border-radius:50%;
+  font-size:9px;font-weight:700;font-family:'JetBrains Mono',monospace;flex-shrink:0;
+}
+
+/* merge line */
+.merge{
+  display:flex;align-items:center;justify-content:center;
+  font-family:'JetBrains Mono',monospace;font-size:10px;
+  color:var(--text-dim);letter-spacing:1px;
+  background:var(--bg2);border:1px solid var(--border);
+  padding:4px 16px;border-radius:10px;max-width:220px;
+}
+
+/* phase phase connector */
+.pconn .arr-line{height:36px;}
+
+/* new feature flag */
+.flag{
+  font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;
+  padding:2px 8px;border-radius:6px;background:var(--agent);color:#fff;
+  letter-spacing:.5px;flex-shrink:0;
+}
+
+</style>
+</head>
+<body>
+
+<!-- ─────────────── HEADER ─────────────── -->
+<div class="header">
+  <div class="cisco-badge">⬡ CISCO WEBEX · CASE COMPETITION 2025</div>
+  <div class="main-title">Webex AI Meeting Prep<br>&amp; Q&amp;A Agent</div>
+  <div class="subtitle">END-TO-END ARCHITECTURE · WITH SPLUNK OBSERVABILITY + AGENTIC AI</div>
+  <p class="desc">
+    A <b>user-centric Prep Agent</b> layered over a <b>system-centric Agentic Orchestrator</b>,
+    monitored end-to-end by <b>Splunk</b> — every phase logged, every gap flagged.
+  </p>
+</div>
+
+<!-- ─────────────── LEGEND ─────────────── -->
+<div class="legend">
+  <div class="leg"><div class="leg-dot" style="background:var(--ph0)"></div>Phase 0 · Pre-Meeting</div>
+  <div class="leg"><div class="leg-dot" style="background:var(--ph1)"></div>Phase 1 · Live Meeting</div>
+  <div class="leg"><div class="leg-dot" style="background:var(--ph2)"></div>Phase 2 · Post-Meeting</div>
+  <div class="leg"><div class="leg-dot" style="background:var(--agent)"></div>Agentic Orchestrator</div>
+  <div class="leg"><div class="leg-dot" style="background:var(--splunk)"></div>Splunk Observability</div>
+  <div class="leg"><div class="leg-dot" style="background:var(--data)"></div>Data Sources</div>
+  <div class="leg"><div class="leg-dot" style="background:var(--dec)"></div>Decision Gate</div>
+</div>
+
+<!-- ─────────────── TWO-COLUMN CANVAS ─────────────── -->
+<div class="canvas">
+
+  <!-- ════════════ SPLUNK RAIL (right column) ════════════ -->
+  <div class="splunk-rail">
+    <div class="splunk-header">⬡ Splunk<br>Observability Rail</div>
+
+    <div class="splunk-card">
+      <div class="splunk-card-title">📥 Phase 0 Logs</div>
+      <div class="splunk-card-body">
+        Meeting scheduled event<br>
+        Context sources fetched<br>
+        Deck generated: ✓/✗<br>
+        Checklist items count
+      </div>
+    </div>
+
+    <div class="splunk-divider"></div>
+
+    <div class="splunk-card">
+      <div class="splunk-card-title">🎥 Phase 1 Logs</div>
+      <div class="splunk-card-body">
+        Meeting join timestamp<br>
+        Questions asked: N<br>
+        Answered: N · Deferred: N<br>
+        Transcript quality score<br>
+        Jira tickets drafted: N
+      </div>
+    </div>
+
+    <div class="splunk-divider"></div>
+
+    <div class="splunk-card">
+      <div class="splunk-card-title">📬 Phase 2 Logs</div>
+      <div class="splunk-card-body">
+        Follow-ups sent: N<br>
+        Response rate: %<br>
+        Avg. response time<br>
+        Escalations triggered
+      </div>
+    </div>
+
+    <div class="splunk-divider"></div>
+
+    <div class="splunk-card">
+      <div class="splunk-card-title">⚠️ Anomaly Alerts</div>
+      <div class="splunk-card-body">
+        Q unanswered &gt; 48h → 🔴<br>
+        Presenter no-response → flag<br>
+        Deck never generated → warn<br>
+        CRM sync failed → alert<br>
+        Escalation to manager
+      </div>
+    </div>
+
+    <div class="splunk-divider"></div>
+
+    <div class="splunk-card">
+      <div class="splunk-card-title">📊 IT Governance</div>
+      <div class="splunk-card-body">
+        Force 24h reminders rule<br>
+        Log all deliveries<br>
+        Which meetings had most<br>
+        unanswered Qs?<br>
+        Agent uptime dashboard
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════════ MAIN FLOW (left column) ════════════ -->
+  <div class="flow">
+
+    <!-- START -->
+    <div class="terminal">⬡ START — USER SCHEDULES MEETING</div>
+    <div class="arr"><div class="arr-line"></div><div class="arr-head"></div></div>
+
+    <!-- DATA SOURCES INGESTION -->
+    <div class="node n0" style="max-width:700px;">
+      <div class="node-title">🗄️ Context Ingestion — Data Sources</div>
+      <div class="node-body">AI Agent auto-pulls all available signals before any human action:</div>
+      <div class="data-bar" style="margin-top:10px;">
+        <div class="data-chip">📅 Webex Calendar</div>
+        <div class="data-chip">💼 CRM (Salesforce)</div>
+        <div class="data-chip">🏗️ Jira Tickets</div>
+        <div class="data-chip">🐙 GitHub PRs</div>
+        <div class="data-chip">💬 Slack Threads</div>
+        <div class="data-chip">📋 Past Meeting Notes</div>
+        <div class="data-chip">📦 ERP Data</div>
+      </div>
+    </div>
+
+    <div class="arr"><div class="arr-line"></div><div class="arr-head"></div></div>
+
+    <!-- ══════════ PHASE 0 ══════════ -->
+    <div class="phase ph0">
+      <div class="phase-hdr">◈ Phase 0 · Pre-Meeting — AI Prep Agent</div>
+      <div class="phase-body">
+
+        <div class="node n0 nAI" style="max-width:700px;">
+          <div class="node-title"><span class="sn">1</span> 🤖 AI Prep Agent — Surface Insights</div>
+          <div class="node-body">
+            "Here are 3 key insights for this meeting."<br>
+            "You may want to present: data, risks, timelines."<br>
+            "Last time this topic arose → 3 Jira tickets were created. Revisit?"<br>
+            "These 2 stakeholders typically ask about budget impact."
+          </div>
+        </div>
+
+        <div class="arr"><div class="arr-line"></div><div class="arr-head"></div></div>
+
+        <div class="node n0" style="max-width:700px;">
+          <div class="node-title"><span class="sn">2</span> 📋 Auto-Generate Prep Checklist &amp; Agenda</div>
+          <div class="node-body">
+            Tasks: Upload slides · Share reports · Clarify last decision · Tag relevant attendees<br>
+            Agenda: "Introduce X" → "Discuss Y" → "Data review" → "Q&amp;A on Z"<br>
+            Predicted Q cards: <span style="color:var(--ph0);">"Prepare for: budget, impact, risk, timeline"</span>
+          </div>
+        </div>
+
+        <div class="arr"><div class="arr-line"></div><div class="arr-head"></div></div>
+
+        <!-- Decision: slides? -->
+        <div class="gate">❓ Does presenter want help creating slides?</div>
+
+        <div class="branch-row">
+          <div class="branch">
+            <div class="branch-tag tag-no">NO — SKIP</div>
+            <div class="arr"><div class="arr-line" style="height:14px;"></div></div>
+            <div class="node n0" style="max-width:200px;">
+              <div class="node-title" style="font-size:12px;">📄 Optional One-Pager</div>
+              <div class="node-body">AI suggests a brief agenda slide as fallback</div>
+            </div>
+          </div>
+          <div class="branch">
+            <div class="branch-tag tag-yes">YES — GENERATE</div>
+            <div class="arr"><div class="arr-line" style="height:14px;"></div><div class="arr-head"></div></div>
+            <div class="node nAI" style="max-width:220px;">
+              <div class="node-title" style="font-size:12px;">🎨 AI Slide Generator</div>
+              <div class="node-body">
+                Pulls CRM · Jira · GitHub data<br>
+                Branded Webex template<br>
+                First draft → Presenter edits<br>
+                <span style="color:var(--agent);">Mock review:</span> upload draft → AI flags gaps
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="arr" style="margin-top:10px;"><div class="arr-line"></div><div class="arr-head"></div></div>
+
+        <!-- Predicted Q row -->
+        <div class="row2" style="max-width:700px;">
+          <div class="node nAI">
+            <div class="node-title"><span class="sn">3</span> 🔮 Predicted Q&amp;A — For Presenter</div>
+            <div class="node-body">
+              "Prepare answers for: budget, customer impact, timeline, risk."<br>
+              Shown as side-bar cards in Webex panel<br>
+              Optional: pre-record short video answers
+            </div>
+          </div>
+          <div class="node n0">
+            <div class="node-title"><span class="sn">4</span> 🃏 Predicted Q&amp;A — For Attendees</div>
+            <div class="node-body">
+              "You may want to ask: How urgent? What's the ROI? What changes for us?"<br>
+              Mini prompt cards in attendee panel
+            </div>
+          </div>
+        </div>
+
+        <div class="arr"><div class="arr-line"></div><div class="arr-head"></div></div>
+
+        <!-- Agentic layer Phase 0 -->
+        <div class="agentic-bar" style="max-width:700px;">
+          <div class="agentic-title">🔧 System-Level Actions (Background — No Interruption)</div>
+          <div class="agentic-body">
+            Drafts Jira ticket if action item detected in agenda → shows approval card to user<br>
+            Syncs updated meeting context back to CRM<br>
+            Logs prep completion status → Splunk<br>
+            <span style="color:var(--splunk);">Splunk:</span> "Prep agent activated · Deck generated · Checklist: 4 tasks · CRM sync: ✓"
+          </div>
+        </div>
+
+      </div>
+    </div><!-- /phase 0 -->
+
+    <div class="arr pconn"><div class="arr-line"></div><div class="arr-head"></div></div>
+
+    <!-- ══════════ PHASE 1 ══════════ -->
+    <div class="phase ph1">
+      <div class="phase-hdr">◈ Phase 1 · Live Meeting — AI-Assisted Execution</div>
+      <div class="phase-body">
+
+        <div class="node n1" style="max-width:700px;">
+          <div class="node-title"><span class="sn">1</span> 🖥️ User Joins Webex Meeting</div>
+          <div class="node-body">
+            Webex UI loads: AI prep notes · Auto-generated deck · Agenda · Predicted Q&amp;A cards<br>
+            Attendees see: prompt cards tailored to their role
+          </div>
+        </div>
+
+        <div class="arr"><div class="arr-line"></div><div class="arr-head"></div></div>
+
+        <div class="node nAI" style="max-width:700px;">
+          <div class="node-title"><span class="sn">2</span> 🤖 AI Meeting Assistant — Live Co-Pilot</div>
+          <div class="node-body">
+            Manages deck flow: auto-transitions or presenter-controlled<br>
+            Reads talking points aloud (AI narration mode, optional)<br>
+            Surfaces real-time insight cards: "Attendee X asked about this last meeting."<br>
+            Transitions to Q&amp;A Mode when presenter signals or time runs out
+          </div>
+          <div class="pills">
+            <div class="pill p1">🎙️ AI Narration</div>
+            <div class="pill p0">🃏 Live Prompt Cards</div>
+            <div class="pill pA">🔀 Auto-Transition</div>
+            <div class="pill p1">⏱️ Time Tracker</div>
+          </div>
+        </div>
+
+        <div class="arr"><div class="arr-line"></div><div class="arr-head"></div></div>
+
+        <!-- Q&A tracking -->
+        <div class="node n1" style="max-width:700px;">
+          <div class="node-title"><span class="sn">3</span> 👂 AI Q&amp;A Tracker — Real-Time</div>
+          <div class="node-body">
+            Transcribes all questions from voice + chat · Per-speaker attribution<br>
+            Tags each question: <span style="color:var(--ph1);">✅ Answered</span> · <span style="color:var(--splunk);">⏸ Deferred</span> · <span style="color:var(--dec);">❌ Unanswered</span><br>
+            Presenter sees live tally: "3 answered · 2 deferred · 1 open"
+          </div>
+        </div>
+
+        <div class="arr"><div class="arr-line"></div><div class="arr-head"></div></div>
+
+        <!-- Agentic layer Phase 1 -->
+        <div class="agentic-bar" style="max-width:700px;">
+          <div class="agentic-title">🔧 Agentic Orchestrator — Background Tasks During Meeting</div>
+          <div class="agentic-body">
+            Detects "create a ticket" mention → drafts Jira ticket → shows approval card (non-blocking)<br>
+            Auto-updates CRM if deal/outcome mentioned ("we'll close Q3") → pending user confirm<br>
+            Logs all Q&amp;A states + transcript → Splunk in real-time<br>
+            <span style="color:var(--splunk);">Splunk:</span> "Meeting live · 5 Qs tracked · 2 deferred · 1 Jira draft pending"
+          </div>
+        </div>
+
+      </div>
+    </div><!-- /phase 1 -->
+
+    <div class="arr pconn"><div class="arr-line"></div><div class="arr-head"></div></div>
+
+    <!-- ══════════ PHASE 2 ══════════ -->
+    <div class="phase ph2">
+      <div class="phase-hdr">◈ Phase 2 · Post-Meeting — Follow-Up Automation</div>
+      <div class="phase-body">
+
+        <div class="node nAI" style="max-width:700px;">
+          <div class="node-title"><span class="sn">1</span> 🔍 AI Detects Unresolved / Deferred Questions</div>
+          <div class="node-body">
+            Scans: transcript + chat log + live Q tracker flags<br>
+            Builds structured follow-up task list: owner · question · deadline (default: 48h)<br>
+            Groups by attendee: "Priya has 2 open questions · Marcus has 1"
+          </div>
+        </div>
+
+        <div class="arr"><div class="arr-line"></div><div class="arr-head"></div></div>
+
+        <div class="node n2" style="max-width:700px;">
+          <div class="node-title"><span class="sn">2</span> 📝 Personalized Follow-Up Messages Generated</div>
+          <div class="node-body">
+            One message per attendee · Written in clear, non-technical language<br>
+            "Hi Priya — here's the answer to your question about the API integration timeline."<br>
+            Delivered via: Webex chat · Email · Optional Slack DM
+          </div>
+        </div>
+
+        <div class="arr"><div class="arr-line"></div><div class="arr-head"></div></div>
+
+        <!-- Decision: answered? -->
+        <div class="gate">❓ Has presenter answered within 48h?</div>
+
+        <div class="branch-row">
+          <div class="branch">
+            <div class="branch-tag tag-yes">YES — CLOSE</div>
+            <div class="arr"><div class="arr-line" style="height:14px;"></div><div class="arr-head"></div></div>
+            <div class="node n2" style="max-width:200px;">
+              <div class="node-title" style="font-size:12px;">📦 AI Packages &amp; Delivers</div>
+              <div class="node-body">
+                Formats answer: text + doc link + recording<br>
+                Sends to relevant attendee only<br>
+                Task marked ✅ Closed<br>
+                Splunk logs: resolved
+              </div>
+            </div>
+          </div>
+          <div class="branch">
+            <div class="branch-tag tag-no">NO — ESCALATE</div>
+            <div class="arr"><div class="arr-line" style="height:14px;"></div><div class="arr-head"></div></div>
+            <div class="node nAI" style="max-width:220px;">
+              <div class="node-title" style="font-size:12px;">🔔 Escalation Path</div>
+              <div class="node-body">
+                Reminder → presenter (24h)<br>
+                Still open → escalates to manager<br>
+                Recurring until closed<br>
+                <span style="color:var(--splunk);">Splunk: 🔴 alert raised</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="arr" style="margin-top:10px;"><div class="arr-line"></div><div class="arr-head"></div></div>
+
+        <!-- Agentic layer Phase 2 -->
+        <div class="agentic-bar" style="max-width:700px;">
+          <div class="agentic-title">🔧 Agentic Orchestrator — Post-Meeting System Sync</div>
+          <div class="agentic-body">
+            Confirms Jira tickets created/approved from meeting → pushes to Jira<br>
+            Updates CRM with meeting outcome, decisions, and follow-up status<br>
+            Writes meeting summary to internal knowledge base<br>
+            Logs all follow-up deliveries, response times, escalations → Splunk<br>
+            <span style="color:var(--splunk);">Splunk:</span> "Follow-ups: 3 sent · 2 resolved · 1 escalated · CRM updated ✓"
+          </div>
+        </div>
+
+        <div class="arr"><div class="arr-line"></div><div class="arr-head"></div></div>
+
+        <!-- Final outputs row -->
+        <div class="row3" style="max-width:700px;">
+          <div class="node n2">
+            <div class="node-title" style="font-size:12px;">📄 Meeting Summary</div>
+            <div class="node-body">
+              Decisions made<br>
+              Action items<br>
+              Q&amp;A log<br>
+              Sent to all attendees
+            </div>
+          </div>
+          <div class="node n2">
+            <div class="node-title" style="font-size:12px;">📊 Prep Quality Score</div>
+            <div class="node-body">
+              Was deck used?<br>
+              % Q answered live<br>
+              Follow-up speed<br>
+              Trend over time
+            </div>
+          </div>
+          <div class="node n2">
+            <div class="node-title" style="font-size:12px;">🔁 Agent Learning</div>
+            <div class="node-body">
+              Stores Jira patterns<br>
+              Updates CRM context<br>
+              Improves next prep<br>
+              "Last time you asked…"
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div><!-- /phase 2 -->
+
+    <div class="arr pconn"><div class="arr-line"></div><div class="arr-head"></div></div>
+
+    <!-- END -->
+    <div class="terminal terminal-end">✓ END — MEETING LIFECYCLE CLOSED</div>
+
+    <!-- architecture note -->
+    <div style="margin-top:44px;max-width:700px;width:100%;
+      background:var(--surface);border:1px solid var(--border2);
+      border-radius:14px;padding:22px 24px;">
+      <div style="font-family:'JetBrains Mono',monospace;font-size:10px;
+        color:var(--ph0);letter-spacing:1.5px;font-weight:700;margin-bottom:14px;">
+        ⬡ ARCHITECTURE SEPARATION — WHY THIS WORKS
+      </div>
+      <div style="display:flex;gap:14px;flex-wrap:wrap;">
+        <div style="flex:1;min-width:180px;background:var(--bg2);border:1px solid rgba(0,229,255,.2);border-radius:10px;padding:13px;">
+          <div style="font-weight:700;font-size:12px;color:var(--ph0);margin-bottom:6px;">🧑 AI Prep Agent</div>
+          <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-mid);line-height:1.8;">
+            User-centric<br>Prep · Slides · Q&amp;A<br>Follow-up delivery<br>Human-facing output
+          </div>
+        </div>
+        <div style="flex:1;min-width:180px;background:var(--bg2);border:1px solid rgba(255,107,53,.2);border-radius:10px;padding:13px;">
+          <div style="font-weight:700;font-size:12px;color:var(--agent);margin-bottom:6px;">🔧 Agentic Orchestrator</div>
+          <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-mid);line-height:1.8;">
+            System-centric<br>Jira · CRM · GitHub<br>Approval gating<br>Always background
+          </div>
+        </div>
+        <div style="flex:1;min-width:180px;background:var(--bg2);border:1px solid rgba(251,191,36,.2);border-radius:10px;padding:13px;">
+          <div style="font-weight:700;font-size:12px;color:var(--splunk);margin-bottom:6px;">📡 Splunk Rail</div>
+          <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-mid);line-height:1.8;">
+            Observability<br>Logging · Alerts<br>Governance rules<br>IT dashboard
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div style="margin-top:32px;text-align:center;font-family:'JetBrains Mono',monospace;
+      font-size:11px;color:var(--text-dim);line-height:2.2;">
+      Cisco Webex · AI Meeting Prep &amp; Q&amp;A Agent · Case Competition 2025<br>
+      <span style="color:var(--ph0);">VIBE (Voice Intelligence &amp; Boost Engine) — see separate proposal</span>
+    </div>
+
+  </div><!-- /flow -->
+</div><!-- /canvas -->
+
+</body>
+</html>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VIBE – Voice Intelligence & Boost Engine | Webex</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@300;400;500&display=swap');
+
+:root {
+  --bg: #080c14;
+  --bg2: #0d1220;
+  --surface: #111827;
+  --surface2: #1a2235;
+  --border: #1e2d45;
+  --border-bright: #2a4060;
+
+  --neon: #00e5ff;
+  --neon2: #00ff9d;
+  --neon3: #ff6b35;
+  --neon4: #a855f7;
+  --neon5: #fbbf24;
+  --neon-red: #ff3b6b;
+
+  --phase-a: #00e5ff;
+  --phase-b: #00ff9d;
+  --phase-c: #a855f7;
+  --phase-d: #ff6b35;
+  --phase-e: #fbbf24;
+
+  --text: #e2e8f0;
+  --text-dim: #64748b;
+  --text-mid: #94a3b8;
+  --white: #ffffff;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'Syne', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* ─── ANIMATED BACKGROUND ─── */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 60% 40% at 20% 20%, rgba(0,229,255,0.04) 0%, transparent 60%),
+    radial-gradient(ellipse 50% 35% at 80% 70%, rgba(168,85,247,0.05) 0%, transparent 60%),
+    radial-gradient(ellipse 40% 30% at 50% 50%, rgba(0,255,157,0.03) 0%, transparent 60%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* ─── WAVEFORM BARS BACKGROUND ─── */
+.waveform-bg {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 120px;
+  display: flex;
+  align-items: flex-end;
+  gap: 3px;
+  padding: 0 20px;
+  opacity: 0.06;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.wave-bar {
+  flex: 1;
+  background: var(--neon);
+  border-radius: 2px 2px 0 0;
+  animation: wavePulse 2s ease-in-out infinite;
+}
+
+@keyframes wavePulse {
+  0%, 100% { transform: scaleY(1); }
+  50% { transform: scaleY(0.3); }
+}
+
+/* ─── MAIN WRAPPER ─── */
+.wrapper {
+  position: relative;
+  z-index: 1;
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 48px 24px 80px;
+}
+
+/* ─── HEADER ─── */
+.header {
+  text-align: center;
+  margin-bottom: 56px;
+}
+
+.cisco-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--surface);
+  border: 1px solid var(--border-bright);
+  padding: 6px 18px;
+  border-radius: 30px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--neon);
+  letter-spacing: 1px;
+  margin-bottom: 24px;
+}
+
+.vibe-title {
+  font-size: clamp(42px, 8vw, 72px);
+  font-weight: 800;
+  letter-spacing: -2px;
+  line-height: 1;
+  background: linear-gradient(135deg, var(--neon) 0%, var(--neon2) 50%, var(--neon4) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin-bottom: 12px;
+  animation: shimmer 4s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+  0%, 100% { filter: brightness(1); }
+  50% { filter: brightness(1.2); }
+}
+
+.vibe-sub {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  color: var(--text-mid);
+  letter-spacing: 2px;
+  margin-bottom: 8px;
+}
+
+.tagline {
+  font-size: 15px;
+  color: var(--text-dim);
+  max-width: 540px;
+  margin: 0 auto;
+  line-height: 1.7;
+}
+
+.tagline span { color: var(--neon); font-weight: 600; }
+
+/* ─── LEGEND ─── */
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: center;
+  margin-bottom: 48px;
+}
+
+.leg {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  padding: 5px 14px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-family: 'JetBrains Mono', monospace;
+  color: var(--text-mid);
+}
+
+.leg-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* ─── FLOW ─── */
+.flow {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+}
+
+/* ─── TERMINAL NODES ─── */
+.terminal {
+  background: var(--surface);
+  border: 2px solid var(--neon);
+  padding: 14px 40px;
+  border-radius: 50px;
+  font-weight: 700;
+  font-size: 14px;
+  letter-spacing: 1px;
+  color: var(--neon);
+  box-shadow: 0 0 24px rgba(0,229,255,0.2), inset 0 0 20px rgba(0,229,255,0.05);
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.terminal-end {
+  border-color: var(--neon2);
+  color: var(--neon2);
+  box-shadow: 0 0 24px rgba(0,255,157,0.2), inset 0 0 20px rgba(0,255,157,0.05);
+}
+
+/* ─── ARROW ─── */
+.arr {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+  margin: 2px 0;
+}
+
+.arr-line {
+  width: 2px;
+  height: 28px;
+  background: linear-gradient(to bottom, var(--border-bright), var(--neon));
+  opacity: 0.5;
+}
+
+.arr-head {
+  width: 0; height: 0;
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+  border-top: 8px solid var(--neon);
+  opacity: 0.6;
+}
+
+.arr-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--text-dim);
+  background: var(--bg2);
+  padding: 2px 10px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  margin: 2px 0;
+}
+
+/* ─── PHASE BLOCK ─── */
+.phase {
+  width: 100%;
+  margin-top: 36px;
+  border-radius: 16px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+}
+
+.phase-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 24px;
+  font-weight: 700;
+  font-size: 12px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.phase-body {
+  background: var(--surface);
+  padding: 28px 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Phase colors */
+.ph-a .phase-header { background: rgba(0,229,255,0.12); color: var(--phase-a); border-bottom: 1px solid rgba(0,229,255,0.2); }
+.ph-b .phase-header { background: rgba(0,255,157,0.12); color: var(--phase-b); border-bottom: 1px solid rgba(0,255,157,0.2); }
+.ph-c .phase-header { background: rgba(168,85,247,0.12); color: var(--phase-c); border-bottom: 1px solid rgba(168,85,247,0.2); }
+.ph-d .phase-header { background: rgba(255,107,53,0.12); color: var(--phase-d); border-bottom: 1px solid rgba(255,107,53,0.2); }
+.ph-e .phase-header { background: rgba(251,191,36,0.12); color: var(--phase-e); border-bottom: 1px solid rgba(251,191,36,0.2); }
+
+/* ─── NODE ─── */
+.node {
+  border-radius: 10px;
+  padding: 13px 18px;
+  border: 1px solid var(--border);
+  background: var(--bg2);
+  width: 100%;
+  max-width: 620px;
+  position: relative;
+  transition: box-shadow 0.2s;
+}
+
+.node:hover {
+  box-shadow: 0 0 20px rgba(0,229,255,0.08);
+}
+
+.node-title {
+  font-weight: 700;
+  font-size: 13px;
+  margin-bottom: 5px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.node-body {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--text-mid);
+  line-height: 1.8;
+}
+
+/* Node accent colors */
+.n-a { border-color: rgba(0,229,255,0.3); }
+.n-a .node-title { color: var(--phase-a); }
+.n-b { border-color: rgba(0,255,157,0.3); }
+.n-b .node-title { color: var(--phase-b); }
+.n-c { border-color: rgba(168,85,247,0.3); }
+.n-c .node-title { color: var(--phase-c); }
+.n-d { border-color: rgba(255,107,53,0.3); }
+.n-d .node-title { color: var(--phase-d); }
+.n-e { border-color: rgba(251,191,36,0.3); }
+.n-e .node-title { color: var(--phase-e); }
+.n-ai { border-color: rgba(255,107,53,0.4); background: rgba(255,107,53,0.05); }
+.n-ai .node-title { color: var(--neon3); }
+.n-dec { border-color: rgba(255,59,107,0.4); background: rgba(255,59,107,0.05); }
+.n-dec .node-title { color: var(--neon-red); }
+
+/* Row layout */
+.row {
+  display: flex;
+  gap: 14px;
+  width: 100%;
+  max-width: 860px;
+  justify-content: center;
+}
+
+.row .node {
+  flex: 1;
+  max-width: 280px;
+}
+
+/* ─── TOGGLE PILLS ─── */
+.pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.pill {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  padding: 4px 14px;
+  border-radius: 20px;
+  border: 1px solid;
+  font-weight: 500;
+}
+
+.pill-a { color: var(--phase-a); border-color: rgba(0,229,255,0.4); background: rgba(0,229,255,0.07); }
+.pill-b { color: var(--phase-b); border-color: rgba(0,255,157,0.4); background: rgba(0,255,157,0.07); }
+.pill-c { color: var(--phase-c); border-color: rgba(168,85,247,0.4); background: rgba(168,85,247,0.07); }
+.pill-d { color: var(--phase-d); border-color: rgba(255,107,53,0.4); background: rgba(255,107,53,0.07); }
+.pill-e { color: var(--phase-e); border-color: rgba(251,191,36,0.4); background: rgba(251,191,36,0.07); }
+
+/* ─── BRANCH GATE ─── */
+.gate {
+  background: rgba(255,59,107,0.08);
+  border: 1.5px solid rgba(255,59,107,0.5);
+  border-radius: 10px;
+  padding: 12px 28px;
+  text-align: center;
+  font-weight: 700;
+  font-size: 12px;
+  color: var(--neon-red);
+  font-family: 'JetBrains Mono', monospace;
+  max-width: 300px;
+}
+
+.branch-row {
+  display: flex;
+  gap: 20px;
+  width: 100%;
+  max-width: 700px;
+  justify-content: center;
+  align-items: flex-start;
+  margin: 4px 0;
+}
+
+.branch {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  max-width: 220px;
+}
+
+.branch-tag {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 3px 12px;
+  border-radius: 12px;
+  border: 1.5px solid;
+}
+
+.tag-yes { color: var(--neon2); border-color: var(--neon2); background: rgba(0,255,157,0.08); }
+.tag-no  { color: var(--neon-red); border-color: var(--neon-red); background: rgba(255,59,107,0.08); }
+
+/* ─── PARALLEL PATHS BOX ─── */
+.parallel {
+  display: flex;
+  gap: 14px;
+  width: 100%;
+  max-width: 860px;
+}
+
+.parallel-col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px 12px;
+}
+
+.parallel-title {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 1px;
+  font-weight: 600;
+  text-transform: uppercase;
+  padding: 4px 12px;
+  border-radius: 10px;
+  border: 1px solid;
+  margin-bottom: 4px;
+}
+
+/* ─── SPECIAL CALLOUT ─── */
+.callout {
+  border-radius: 12px;
+  padding: 16px 20px;
+  width: 100%;
+  max-width: 680px;
+  border: 1px dashed;
+  position: relative;
+}
+
+.callout::before {
+  content: attr(data-label);
+  position: absolute;
+  top: -10px;
+  left: 20px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 10px;
+  border-radius: 8px;
+}
+
+.c-new { border-color: rgba(168,85,247,0.4); background: rgba(168,85,247,0.05); }
+.c-new::before { background: #a855f7; color: #fff; }
+.c-new .callout-title { color: var(--phase-c); }
+
+.c-green { border-color: rgba(0,255,157,0.4); background: rgba(0,255,157,0.04); }
+.c-green::before { background: #00ff9d; color: #000; }
+.c-green .callout-title { color: var(--phase-b); }
+
+.callout-title {
+  font-weight: 700;
+  font-size: 12px;
+  margin-bottom: 6px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.callout-body {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--text-mid);
+  line-height: 1.8;
+}
+
+/* Step counter */
+.step-num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px; height: 20px;
+  background: var(--border-bright);
+  border-radius: 50%;
+  font-size: 10px;
+  font-weight: 700;
+  font-family: 'JetBrains Mono', monospace;
+  flex-shrink: 0;
+}
+
+/* Signal bars icon */
+.sig {
+  display: inline-flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 14px;
+}
+.sig span {
+  display: block;
+  width: 3px;
+  background: var(--neon);
+  border-radius: 1px;
+}
+
+/* Wide node */
+.node-wide { max-width: 720px; }
+
+/* Connector between phases */
+.phase-connector {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+  margin: 4px 0;
+}
+
+.phase-connector .arr-line { height: 36px; }
+
+/* Small internal arrow */
+.sarr {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.sarr .arr-line { height: 18px; }
+.sarr .arr-head { border-top-color: var(--border-bright); opacity: 0.8; }
+</style>
+</head>
+<body>
+
+<!-- Waveform BG -->
+<div class="waveform-bg" id="waveform"></div>
+
+<div class="wrapper">
+
+  <!-- HEADER -->
+  <div class="header">
+    <div class="cisco-badge">
+      <div class="sig"><span style="height:4px"></span><span style="height:7px"></span><span style="height:11px"></span><span style="height:14px"></span></div>
+      CISCO WEBEX · CASE COMPETITION 2025
+    </div>
+    <div class="vibe-title">VIBE</div>
+    <div class="vibe-sub">VOICE INTELLIGENCE &amp; BOOST ENGINE</div>
+    <p class="tagline">
+      No more <span>"am I audible?"</span> — VIBE is the real-time AI voice &amp; language layer that cleans, translates, simplifies, and speaks for you.
+    </p>
+  </div>
+
+  <!-- LEGEND -->
+  <div class="legend">
+    <div class="leg"><div class="leg-dot" style="background:var(--phase-a)"></div>A · Setup &amp; Entry</div>
+    <div class="leg"><div class="leg-dot" style="background:var(--phase-b)"></div>B · Live Audio Path</div>
+    <div class="leg"><div class="leg-dot" style="background:var(--phase-c)"></div>C · Type-to-Speak</div>
+    <div class="leg"><div class="leg-dot" style="background:var(--phase-d)"></div>D · Q&amp;A Loop</div>
+    <div class="leg"><div class="leg-dot" style="background:var(--phase-e)"></div>E · End &amp; Logging</div>
+    <div class="leg"><div class="leg-dot" style="background:var(--neon3)"></div>AI Processing</div>
+    <div class="leg"><div class="leg-dot" style="background:var(--neon-red)"></div>Decision Gate</div>
+  </div>
+
+  <div class="flow">
+
+    <!-- START -->
+    <div class="terminal">⬡ START — VIBE LAYER INITIALIZED</div>
+    <div class="arr"><div class="arr-line"></div><div class="arr-head"></div></div>
+
+    <!-- ══════════ PHASE A ══════════ -->
+    <div class="phase ph-a" style="max-width:860px;">
+      <div class="phase-header">
+        ◈ &nbsp;Phase A &nbsp;·&nbsp; Setup / User Entry
+      </div>
+      <div class="phase-body">
+
+        <div class="node n-a node-wide">
+          <div class="node-title"><span class="step-num">1</span> 🖥️ User Joins Webex Meeting</div>
+          <div class="node-body">VIBE layer auto-detects audio environment · System profiles mic + room acoustics</div>
+        </div>
+
+        <div class="arr"><div class="arr-line"></div><div class="arr-head"></div></div>
+
+        <div class="node n-a node-wide">
+          <div class="node-title"><span class="step-num">2</span> 🎛️ User Toggles VIBE Layer &amp; Selects Mode</div>
+          <div class="node-body">
+            Choose one or more active modes:
+          </div>
+          <div class="pills" style="margin-top:10px;">
+            <div class="pill pill-a">🔊 Voice Boost</div>
+            <div class="pill pill-b">🌐 Live Translate</div>
+            <div class="pill pill-c">⌨️ Type-to-Speak</div>
+            <div class="pill pill-d">🧩 Simple Mode (Non-Tech)</div>
+            <div class="pill pill-e">🎭 AI Avatar / Double</div>
+          </div>
+        </div>
+
+        <div class="arr"><div class="arr-line"></div><div class="arr-head"></div></div>
+
+        <div class="node n-a node-wide">
+          <div class="node-title"><span class="step-num">3</span> 🌍 User Sets Language &amp; Profile</div>
+          <div class="node-body">
+            Native Language: Hindi · Spanish · Mandarin · French · Arabic · + 40 more<br>
+            Tech Level: Technical ↔ Non-Technical<br>
+            Voice Preset: 🎙️ Podcast Voice &nbsp;|&nbsp; ✨ Crystal Clear &nbsp;|&nbsp; 😎 Chill Voice &nbsp;|&nbsp; 🏢 Pro Mode
+          </div>
+        </div>
+
+        <div class="arr"><div class="arr-line"></div><div class="arr-head"></div></div>
+
+        <!-- Decision gate: which path -->
+        <div class="gate">❓ Is user speaking or typing?</div>
+
+        <div class="branch-row" style="margin-top:8px;max-width:620px;">
+          <div class="branch">
+            <div class="branch-tag tag-yes">🎙️ SPEAKING</div>
+            <div class="arr"><div class="arr-line" style="height:14px;"></div></div>
+            <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--phase-b);">→ Path B: Live Audio</div>
+          </div>
+          <div class="branch">
+            <div class="branch-tag tag-no">⌨️ TYPING</div>
+            <div class="arr"><div class="arr-line" style="height:14px;"></div></div>
+            <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--phase-c);">→ Path C: Type-to-Speak</div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- connector -->
+    <div class="phase-connector"><div class="arr-line"></div><div class="arr-head"></div></div>
+
+    <!-- ══════════ PHASE B ══════════ -->
+    <div class="phase ph-b" style="max-width:860px;">
+      <div class="phase-header">
+        ◈ &nbsp;Phase B &nbsp;·&nbsp; Live Audio Path &nbsp;·&nbsp; <span style="opacity:0.6;font-size:10px;">WHEN USER SPEAKS</span>
+      </div>
+      <div class="phase-body">
+
+        <div class="node n-b node-wide">
+          <div class="node-title"><span class="step-num">1</span> 🎤 Microphone Audio Captured</div>
+          <div class="node-body">Raw PCM audio stream · Per-speaker separation (Webex native) · Real-time buffer</div>
+        </div>
+
+        <div class="arr"><div class="arr-line"></div><div class="arr-head"></div></div>
+
+        <!-- AI Front end -->
+        <div class="node n-ai node-wide">
+          <div class="node-title"><span class="step-num">2</span> 🤖 Audio Intelligence Front-End</div>
+          <div class="node-body">
+            ✦ Noise Removal (café / wind / keyboard / crowd)<br>
+            ✦ Echo Cancellation + Auto Gain Control<br>
+            ✦ Background Blur: Music · HVAC · Dog · Baby<br>
+            ✦ "Optimize for My Voice" — learns your vocal signature<br>
+            <span style="color:var(--neon3);font-weight:600;">NEW →</span> Smart Room Detection: detects reverb, adjusts EQ live
+          </div>
+        </div>
+
+        <div class="arr"><div class="arr-line"></div><div class="arr-head"></div></div>
+
+        <div class="node n-b node-wide">
+          <div class="node-title"><span class="step-num">3</span> 🔊 Voice Boost &amp; EQ Engine</div>
+          <div class="node-body">
+            Apply selected preset → Loudness · Clarity · Warmth · Presence<br>
+            Adaptive EQ: noisy café ≠ quiet office ≠ conference room<br>
+            Real-time waveform normalization · Consistent output level
+          </div>
+        </div>
+
+        <div class="arr"><div class="arr-line"></div><div class="arr-head"></div></div>
+
+        <div class="node n-ai node-wide">
+          <div class="node-title"><span class="step-num">4</span> 🗣️ Speech-to-Text (ASR)</div>
+          <div class="node-body">
+            Real-time transcription in user's native language<br>
+            Multi-accent support · Noisy input handling<br>
+            Per-speaker diarization (Who said what?)<br>
+            <span style="color:var(--neon3);font-weight:600;">NEW →</span> Filler word detection: removes "um", "uh", "like" from transcript
+          </div>
+        </div>
+
+        <div class="arr"><div class="arr-line"></div><div class="arr-head"></div></div>
+
+        <!-- NLP + conditional branches -->
+        <div class="node n-ai node-wide">
+          <div class="node-title"><span class="step-num">5</span> 🧠 NLP &amp; Language Understanding</div>
+          <div class="node-body">Detect: intent · domain · tech level · sentiment · key entities</div>
+        </div>
+
+        <div class="arr"><div class="arr-line"></div><div class="arr-head"></div></div>
+
+        <!-- Conditional row -->
+        <div class="parallel" style="max-width:760px;">
+
+          <div class="parallel-col">
+            <div class="parallel-title" style="color:var(--phase-d);border-color:rgba(255,107,53,0.4);">🧩 IF SIMPLE MODE ON</div>
+            <div class="node n-d" style="max-width:none;">
+              <div class="node-title" style="font-size:12px;">Jargon Simplifier</div>
+              <div class="node-body">
+                Rewrites technical text<br>
+                Adds real-world analogies<br>
+                Example: "API" → "a waiter<br>between kitchen &amp; table"<br>
+                <span style="color:var(--phase-d);">NEW→</span> Emoji + visual cues added
+              </div>
+            </div>
+          </div>
+
+          <div class="parallel-col">
+            <div class="parallel-title" style="color:var(--phase-b);border-color:rgba(0,255,157,0.4);">🌐 IF TRANSLATE ON</div>
+            <div class="node n-b" style="max-width:none;">
+              <div class="node-title" style="font-size:12px;">Live Translator</div>
+              <div class="node-body">
+                Native lang → English<br>
+                (or any target language)<br>
+                Context-aware translation<br>
+                Preserves technical terms<br>
+                <span style="color:var(--phase-b);">NEW→</span> Tone preservation
+              </div>
+            </div>
+          </div>
+
+          <div class="parallel-col">
+            <div class="parallel-title" style="color:var(--phase-a);border-color:rgba(0,229,255,0.4);">📊 ALWAYS ON</div>
+            <div class="node n-a" style="max-width:none;">
+              <div class="node-title" style="font-size:12px;">Confidence Booster</div>
+              <div class="node-body">
+                Detects hesitation &amp; suggests<br>
+                rephrasing in real-time<br>
+                Highlights unclear segments<br>
+                <span style="color:var(--phase-a);">NEW→</span> Private earpiece<br>coaching mode
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <div class="arr"><div class="arr-line"></div><div class="arr-head"></div></div>
+
+        <div class="node n-ai node-wide">
+          <div class="node-title"><span class="step-num">6</span> 🔈 Text-to-Speech Output (VIBE Voice)</div>
+          <div class="node-body">
+            Converts processed/translated text → natural speech<br>
+            Consistent "VIBE Voice" identity per user across sessions<br>
+            Target: English (global) or any specified target language<br>
+            <span style="color:var(--neon3);font-weight:600;">NEW →</span> Emotional tone matching — excited text sounds excited
+          </div>
+        </div>
+
+        <div class="arr"><div class="arr-line"></div><div class="arr-head"></div></div>
+
+        <div class="node n-b node-wide">
+          <div class="node-title"><span class="step-num">7</span> 📡 Deliver to Other Participants</div>
+          <div class="node-body">
+            They hear: boosted · cleaned · translated VIBE voice<br>
+            Live captions in their own language (each attendee can set their own)<br>
+            <span style="color:var(--phase-b);font-weight:600;">NEW →</span> Caption language is per-user — everyone sees their own language simultaneously
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- connector -->
+    <div class="phase-connector"><div class="arr-line"></div><div class="arr-head"></div></div>
+
+    <!-- ══════════ PHASE C ══════════ -->
+    <div class="phase ph-c" style="max-width:860px;">
+      <div class="phase-header">
+        ◈ &nbsp;Phase C &nbsp;·&nbsp; Type-to-Speak Path &nbsp;·&nbsp; <span style="opacity:0.6;font-size:10px;">WHEN USER CANNOT / WON'T SPEAK</span>
+      </div>
+      <div class="phase-body">
+
+        <div class="node n-c node-wide">
+          <div class="node-title"><span class="step-num">1</span> ⌨️ User Switches to Type-to-Speak Mode</div>
+          <div class="node-body">
+            Triggers: muted · too noisy · mic broken · speech difficulty · shy in large call<br>
+            <span style="color:var(--phase-c);font-weight:600;">NEW →</span> Auto-suggest: VIBE detects long silence + background noise → offers this mode
+          </div>
+        </div>
+
+        <div class="arr"><div class="arr-line"></div><div class="arr-head"></div></div>
+
+        <div class="node n-c node-wide">
+          <div class="node-title"><span class="step-num">2</span> 📝 User Types in VIBE Panel or Chat</div>
+          <div class="node-body">Typing in any language · Can paste code snippets, data, tables</div>
+        </div>
+
+        <div class="arr"><div class="arr-line"></div><div class="arr-head"></div></div>
+
+        <div class="node n-ai node-wide">
+          <div class="node-title"><span class="step-num">3</span> 🧠 NLP Processing</div>
+          <div class="node-body">
+            Detect language &amp; intent · Simplify or professionalize based on mode<br>
+            Translate to meeting language (e.g., → English)<br>
+            <span style="color:var(--neon3);font-weight:600;">NEW →</span> "Polish mode" — convert quick draft into fluent spoken language
+          </div>
+        </div>
+
+        <div class="arr"><div class="arr-line"></div><div class="arr-head"></div></div>
+
+        <div class="node n-c node-wide">
+          <div class="node-title"><span class="step-num">4</span> 🤖 VIBE Agent Speaks on Behalf of User</div>
+          <div class="node-body">
+            Agent voice speaks typed message aloud in the meeting<br>
+            Screen label: <span style="color:var(--phase-c);">"🎙️ Spoken by VIBE for [UserName]"</span><br>
+            User can choose from 3 voice personas for their VIBE agent
+          </div>
+        </div>
+
+        <div class="arr"><div class="arr-line"></div><div class="arr-head"></div></div>
+
+        <div class="callout c-new" data-label="✦ NEW FEATURE">
+          <div class="callout-title">⚡ VIBE Interrupt Signal</div>
+          <div class="callout-body">
+            If user types "!" prefix → VIBE flags an urgent interrupt<br>
+            Host is notified: "[UserName] wants to raise a point"<br>
+            Smooth, non-disruptive way to speak up in large meetings
+          </div>
+        </div>
+
+        <div class="arr"><div class="arr-line"></div><div class="arr-head"></div></div>
+
+        <div class="node n-c node-wide">
+          <div class="node-title"><span class="step-num">5</span> 📋 Caption &amp; Chat Sync</div>
+          <div class="node-body">
+            Caption displayed: "from [UserName] via VIBE ⌨️"<br>
+            Auto-appended to meeting transcript with source tag
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- connector -->
+    <div class="phase-connector"><div class="arr-line"></div><div class="arr-head"></div></div>
+
+    <!-- ══════════ PHASE D ══════════ -->
+    <div class="phase ph-d" style="max-width:860px;">
+      <div class="phase-header">
+        ◈ &nbsp;Phase D &nbsp;·&nbsp; Q&amp;A Loop &nbsp;·&nbsp; <span style="opacity:0.6;font-size:10px;">FOR NON-TECH / NON-NATIVE USERS</span>
+      </div>
+      <div class="phase-body">
+
+        <div class="node n-d node-wide">
+          <div class="node-title"><span class="step-num">1</span> 🙋 User Asks in Own Language (Voice or Text)</div>
+          <div class="node-body">
+            Example: "Yeh API integration kaise kaam karti hai?" (Hindi)<br>
+            Example: "¿Cuánto cuesta el plan enterprise?" (Spanish)<br>
+            VIBE detects language → routes to translation pipeline
+          </div>
+        </div>
+
+        <div class="arr"><div class="arr-line"></div><div class="arr-head"></div></div>
+
+        <div class="node n-ai node-wide">
+          <div class="node-title"><span class="step-num">2</span> 🔄 ASR + Translation to English</div>
+          <div class="node-body">
+            Native speech → English text · Displayed to presenter as caption<br>
+            Presenter sees: <span style="color:var(--neon3);">"[Priya] asked (translated): How does the API integration work?"</span>
+          </div>
+        </div>
+
+        <div class="arr"><div class="arr-line"></div><div class="arr-head"></div></div>
+
+        <div class="node n-d node-wide">
+          <div class="node-title"><span class="step-num">3</span> 🎤 Presenter Answers in English</div>
+          <div class="node-body">
+            Presenter responds normally · VIBE listens and captures the answer<br>
+            <span style="color:var(--phase-d);font-weight:600;">NEW →</span> Presenter can tag: "Simplified answer" to trigger extra NLP treatment
+          </div>
+        </div>
+
+        <div class="arr"><div class="arr-line"></div><div class="arr-head"></div></div>
+
+        <div class="node n-ai node-wide">
+          <div class="node-title"><span class="step-num">4</span> 🌐 Translation + Simplification Back to User</div>
+          <div class="node-body">
+            English answer → translated to user's native language<br>
+            If Simple Mode: adds analogy + concrete example<br>
+            Example: "Think of an API like a power outlet — your device doesn't need to know how electricity is generated"
+          </div>
+        </div>
+
+        <div class="arr"><div class="arr-line"></div><div class="arr-head"></div></div>
+
+        <div class="node n-d node-wide">
+          <div class="node-title"><span class="step-num">5</span> 📤 Output to User</div>
+          <div class="node-body">
+            🔊 Audio in native language via VIBE voice<br>
+            📝 Text with simplified explanation + examples in caption pane<br>
+            🔗 Optional: "Save this explanation" bookmark
+          </div>
+        </div>
+
+        <div class="arr"><div class="arr-line"></div><div class="arr-head"></div></div>
+
+        <div class="callout c-green" data-label="✦ NEW FEATURE">
+          <div class="callout-title">🤝 VIBE Empathy Score</div>
+          <div class="callout-body">
+            After each Q&amp;A cycle, VIBE privately scores clarity of the presenter's answer (1–10)<br>
+            Presenter sees: "Your answer scored 6/10 for clarity to non-technical users."<br>
+            "Try adding a visual example next time." → Coaching in real-time
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- connector -->
+    <div class="phase-connector"><div class="arr-line"></div><div class="arr-head"></div></div>
+
+    <!-- ══════════ PHASE E ══════════ -->
+    <div class="phase ph-e" style="max-width:860px;">
+      <div class="phase-header">
+        ◈ &nbsp;Phase E &nbsp;·&nbsp; End &amp; Logging
+      </div>
+      <div class="phase-body">
+
+        <div class="row">
+          <div class="node n-e">
+            <div class="node-title"><span class="step-num">1</span> 📼 VIBE Transcript Saved</div>
+            <div class="node-body">
+              Original language layer<br>
+              English translation layer<br>
+              Simplified text layer<br>
+              Timestamps + speaker tags
+            </div>
+          </div>
+          <div class="node n-e">
+            <div class="node-title"><span class="step-num">2</span> 📊 Session Analytics</div>
+            <div class="node-body">
+              Voice clarity score over time<br>
+              Translation accuracy report<br>
+              Q&amp;A resolution rate<br>
+              Empathy score trend
+            </div>
+          </div>
+          <div class="node n-e">
+            <div class="node-title"><span class="step-num">3</span> 📦 VIBE Summary Pack</div>
+            <div class="node-body">
+              Key Q&amp;A in native language<br>
+              Simple explanations + examples<br>
+              Action items extracted<br>
+              Share via Webex / email
+            </div>
+          </div>
+        </div>
+
+        <div class="arr"><div class="arr-line"></div><div class="arr-head"></div></div>
+
+        <div class="callout c-new" data-label="✦ NEW FEATURE" style="max-width:720px;">
+          <div class="callout-title">🔁 VIBE Personal Memory (Cross-Session)</div>
+          <div class="callout-body">
+            VIBE remembers your voice preset, preferred language, and jargon glossary across all meetings<br>
+            "Your VIBE profile is active — Crystal Clear voice, Hindi ↔ English, Non-Tech simplification ON"<br>
+            Enterprise admins can set org-wide VIBE defaults for all employees
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- connector -->
+    <div class="phase-connector"><div class="arr-line"></div><div class="arr-head"></div></div>
+
+    <!-- END -->
+    <div class="terminal terminal-end">✓ END — VIBE SESSION COMPLETE</div>
+
+    <!-- Footer tagline -->
+    <div style="margin-top:48px;text-align:center;max-width:600px;">
+      <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-dim);line-height:2;">
+        VIBE positions Webex as the only platform where<br>
+        <span style="color:var(--neon);">language, noise, and tech barriers never limit who can participate.</span><br>
+        <br>
+        Cisco Webex · VIBE Feature Proposal · Case Competition 2025
+      </div>
+    </div>
+
+  </div><!-- flow -->
+</div><!-- wrapper -->
+
+<script>
+// Generate waveform bars
+const wf = document.getElementById('waveform');
+for (let i = 0; i < 120; i++) {
+  const bar = document.createElement('div');
+  bar.className = 'wave-bar';
+  const h = Math.random() * 80 + 20;
+  bar.style.height = h + 'px';
+  bar.style.animationDelay = (Math.random() * 2) + 's';
+  bar.style.animationDuration = (1.5 + Math.random() * 1.5) + 's';
+  bar.style.opacity = (0.3 + Math.random() * 0.7).toString();
+  const hue = Math.random() > 0.5 ? 'var(--neon)' : 'var(--neon2)';
+  bar.style.background = hue;
+  wf.appendChild(bar);
+}
+</script>
+
+</body>
+</html>
